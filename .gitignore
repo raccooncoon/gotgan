@@ -1,0 +1,17 @@
+# build
+build/
+target/
+out/
+.gradle/
+node_modules/
+dist/
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# local
+.env
+*.log
