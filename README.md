@@ -20,6 +20,7 @@
 - [계획 수립과 검토 절차](docs/planning-process.md)
 - [참고 자료 분석](docs/references.md)
 - [아키텍처 결정 기록(ADR)](docs/adr/)
+- [사전 실험](experiments/pre/README.md)
 
 ## 기술 후보
 
