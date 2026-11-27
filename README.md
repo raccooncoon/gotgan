@@ -20,7 +20,8 @@
 - [계획 수립과 검토 절차](docs/planning-process.md)
 - [참고 자료 분석](docs/references.md)
 - [아키텍처 결정 기록(ADR)](docs/adr/)
-- [사전 실험](experiments/pre/README.md)
+- [사전 실험](experiments/pre/README.md) (소스코드 대상, 완료)
+- [문서 실험](experiments/doc/README.md) (회의록, PDF, HWPX, XLSX 대상, 준비 중)
 
 ## 기술 후보
 
