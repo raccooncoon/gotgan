@@ -43,7 +43,7 @@ def trust_tier(meta):
 
 
 def knowledge_stats(lab, unreadable):
-    tiers, types, areas, statuses = Counter(), Counter(), Counter(), Counter()
+    tiers, types, areas, statuses, evidence = Counter(), Counter(), Counter(), Counter(), Counter()
     total = 0
     for path, meta, _ in concepts(lab / "knowledge"):
         if meta is None:
@@ -54,8 +54,11 @@ def knowledge_stats(lab, unreadable):
         types[str(meta["type"])] += 1
         areas[str(meta.get("x-gotgan-area", "미분류"))] += 1
         statuses[str(meta.get("status") or "stable")] += 1
+        kinds = {str(s.get("x-gotgan-kind", "file")) for s in as_list(meta.get("sources")) if isinstance(s, dict)}
+        evidence["file-only" if kinds == {"file"} else "none" if not kinds else "includes-unchecked"] += 1
     return {"total": total, "by_tier": dict(tiers), "by_type": dict(types),
-            "by_area": dict(areas), "by_status": dict(statuses)}
+            "by_area": dict(areas), "by_status": dict(statuses),
+            "by_evidence": dict(evidence)}
 
 
 def flag_stats(lab, unreadable):
@@ -108,12 +111,14 @@ def main():
     scores = score_stats(lab)
     unreadable = []
     review = lab / "report" / "review_minutes.txt"
+    review2 = lab / "report" / "review_minutes_s2.txt"
     result = {
         "target_commit": (lab / "TARGET").read_text(encoding="utf-8").strip() if (lab / "TARGET").exists() else None,
         "knowledge": knowledge_stats(lab, unreadable),
         "flags": flag_stats(lab, unreadable),
         "scores": scores,
         "review_minutes": float(review.read_text().strip()) if review.exists() else None,
+        "review_minutes_s2": float(review2.read_text().strip()) if review2.exists() else None,
         "unreadable_files": unreadable,
     }
     for path in unreadable:
