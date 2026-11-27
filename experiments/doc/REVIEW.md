@@ -25,6 +25,8 @@
 8. **집계와 현황판.** `review.json`을 쓰고 `python board/build_board.py lab/report/review.json lab/report/board.html`로 현황판을 만든다.
 9. **소유자에게 보여 준다.** `board.html`을 열어 보여 주고, 판정이 틀린 곳을 알려 달라고 한다. 소유자가 고친 판정은 `review.json`에 `verified: "소유자 확인"`으로 반영한다.
 
+현황판은 외부 자원 없이 열리는 HTML 한 파일이다. 주제를 누르면 문제와 문서 목록이 그 주제로 좁혀지고, 문제마다 근거 인용을 펼쳐 볼 수 있다. 문제 목록에는 대조 검증에서 "불일치"로 나온 것도 표시와 함께 남기되, 손봐야 할 것의 수에서는 뺀다.
+
 ## 3. review.json 형식
 
 ```json

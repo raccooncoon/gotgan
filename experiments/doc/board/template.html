@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>문서 검토 현황판</title>
+<style>
+:root {
+  --bg: #f3f5f4; --surface: #ffffff; --surface-2: #e9eeec; --line: #d5ddd9;
+  --fg: #16211d; --muted: #56655f; --accent: #0f6b57;
+  --st-current: #0aac23; --st-superseded: #a9b4af; --st-conflict: #dc3c3d; --st-duplicate: #fbb315;
+  --st-record: #257de0; --st-unknown: #d9c7ee;
+  --sev-high: #dc3c3d; --sev-mid: #fbb315; --sev-low: #a9b4af;
+  --body: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101614; --surface: #18211e; --surface-2: #212c28; --line: #33423c;
+    --fg: #e6eeea; --muted: #9db0a8; --accent: #5cc7ab;
+    --st-superseded: #5d6b65; --st-record: #338ced; --st-unknown: #6a558a; --sev-low: #5d6b65;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 16px 64px; display: flex; flex-direction: column; gap: 36px; }
+h1, h2, h3 { margin: 0; line-height: 1.3; }
+h1 { font-size: 26px; } h2 { font-size: 20px; } h3 { font-size: 15px; }
+p { margin: 0; }
+.muted { color: var(--muted); font-size: 13.5px; }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+header, section { display: flex; flex-direction: column; gap: 14px; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.tile .label { font-size: 13px; color: var(--muted); }
+.tile .value { font-weight: 700; font-size: 30px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tile .sub { font-size: 12.5px; color: var(--muted); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.stack { display: flex; gap: 2px; height: 18px; min-width: 0; }
+.stack span { min-width: 2px; }
+.stack span:first-child { border-radius: 4px 0 0 4px; } .stack span:last-child { border-radius: 0 4px 4px 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 2px; flex: none; display: inline-block; }
+.rows { display: grid; grid-template-columns: minmax(90px, max-content) 44px minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: 13.5px; }
+.rows .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.months { display: flex; align-items: flex-end; gap: 6px; height: 150px; overflow-x: auto; padding-top: 18px; }
+.month { flex: 1 0 34px; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.month .col { width: 22px; display: flex; flex-direction: column-reverse; gap: 2px; }
+.month .col span { width: 100%; min-height: 2px; }
+.month .col span:last-child { border-radius: 4px 4px 0 0; }
+.month small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.month b { font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.topics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.topic { text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; min-width: 0; }
+.topic:hover { border-color: var(--accent); }
+.topic[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.topic:focus-visible, .chip:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.topic .canon { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.topic .foot { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: var(--muted); align-items: center; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); white-space: nowrap; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; display: inline-block; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { font: inherit; font-size: 13px; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+input[type="search"] { font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); min-width: 0; flex: 1 1 220px; max-width: 360px; }
+.issue { border-bottom: 1px solid var(--line); padding: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+.issue:last-child { border-bottom: 0; }
+.issue .head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.issue .docs { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+details { font-size: 13px; }
+summary { cursor: pointer; color: var(--muted); }
+blockquote { margin: 6px 0 0; padding: 6px 10px; border-left: 3px solid var(--line); background: var(--surface-2); border-radius: 0 6px 6px 0; overflow-wrap: anywhere; }
+blockquote small { display: block; color: var(--muted); }
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 640px; }
+th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+td.path { overflow-wrap: anywhere; }
+.empty { color: var(--muted); font-size: 13.5px; padding: 8px 0; }
+@media (max-width: 800px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid2, .topics { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>문서 검토 현황판</h1>
+    <p class="muted" id="meta"></p>
+    <div class="tiles" id="tiles"></div>
+  </header>
+
+  <section>
+    <h2>지금 얼마나 정리돼 있는가</h2>
+    <div class="panel">
+      <h3>문서 상태</h3>
+      <div class="stack" id="all-stack"></div>
+      <div class="legend" id="state-legend"></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>폴더별 상태</h3><div class="rows" id="folders"></div></div>
+      <div class="panel"><h3>작성 시기별 문서</h3><p class="muted">날짜가 확인된 문서만. 오래된 달에 "현행"이 많으면 갱신이 필요한지 볼 곳입니다.</p><div class="months" id="months"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>주제별 지식</h2>
+    <p class="muted">주제를 누르면 아래의 문제와 문서 목록이 그 주제로 좁혀집니다. 다시 누르면 풀립니다.</p>
+    <div class="topics" id="topics"></div>
+  </section>
+
+  <section>
+    <h2>손봐야 할 것 <span class="muted" id="issue-count"></span></h2>
+    <div class="filters" id="issue-filters"></div>
+    <div class="panel" id="issues"></div>
+  </section>
+
+  <section>
+    <h2>문서 목록 <span class="muted" id="doc-count"></span></h2>
+    <div class="filters"><input type="search" id="q" placeholder="제목, 경로, 메모에서 찾기" aria-label="문서 찾기"><span id="state-filters" class="filters"></span></div>
+    <div class="panel"><div class="table-scroll"><table><thead><tr><th>문서</th><th>종류</th><th>날짜</th><th>상태</th><th>이유</th></tr></thead><tbody id="docs"></tbody></table></div><div id="more"></div></div>
+  </section>
+
+  <section>
+    <h2>계속 나아지고 있는가</h2>
+    <div class="panel" id="history"></div>
+  </section>
+
+  <section>
+    <h2>이 판정을 얼마나 믿을 수 있는가</h2>
+    <div class="grid2">
+      <div class="panel"><h3>원본 변환</h3><div class="rows" id="convert"></div></div>
+      <div class="panel"><h3>대조 검증</h3><p class="muted">판정을 쓴 에이전트와 다른 에이전트가 원문과 대조한 결과입니다.</p><div class="rows" id="verify"></div></div>
+    </div>
+  </section>
+</div>
+
+<script id="data" type="application/json">/*DATA*/null</script>
+<script>
+(function () {
+  var D = JSON.parse(document.getElementById("data").textContent) || {};
+  var docs = D.docs || [], topics = D.topics || [], issues = D.issues || [], meta = D.meta || {};
+  var STATES = ["현행", "대체됨", "상충", "중복", "기록", "판단 불가"];
+  var SCOLOR = { "현행": "--st-current", "대체됨": "--st-superseded", "상충": "--st-conflict", "중복": "--st-duplicate", "기록": "--st-record", "판단 불가": "--st-unknown" };
+  var SEVS = ["높음", "중간", "낮음"], SEVCOLOR = { "높음": "--sev-high", "중간": "--sev-mid", "낮음": "--sev-low" };
+  var byId = {}; docs.forEach(function (d) { byId[d.id] = d; });
+  var topicById = {}; topics.forEach(function (t) { topicById[t.id] = t; });
+  var sel = { topic: null, kind: null, sev: null, state: null, q: "", limit: 60 };
+
+  function $(id) { return document.getElementById(id); }
+  function h(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function count(list, key) { var c = {}; list.forEach(function (x) { var k = typeof key === "function" ? key(x) : x[key]; c[k] = (c[k] || 0) + 1; }); return c; }
+  function stack(counts, order, colors) {
+    var s = h("div", "stack"), total = 0; order.forEach(function (k) { total += counts[k] || 0; });
+    order.forEach(function (k) { var n = counts[k] || 0; if (!n) return; var seg = h("span"); seg.style.flex = n + " 0 0"; seg.style.background = "var(" + colors[k] + ")"; seg.title = k + " " + n + "건"; s.appendChild(seg); });
+    s.setAttribute("role", "img"); s.setAttribute("aria-label", order.filter(function (k) { return counts[k]; }).map(function (k) { return k + " " + counts[k] + "건"; }).join(", "));
+    return s;
+  }
+  function pill(text, colorVar) { var p = h("span", "pill"); if (colorVar) { var d = h("span", "dot"); d.style.background = "var(" + colorVar + ")"; p.appendChild(d); } p.appendChild(document.createTextNode(text)); return p; }
+  function title(id) { var d = byId[id]; return d ? (d.title || d.path) : id; }
+  function rows(el, pairs) { el.textContent = ""; pairs.forEach(function (p) { el.appendChild(h("span", null, p[0])); el.appendChild(h("span", "n", p[1])); el.appendChild(p[2] || h("span")); }); }
+
+  // 머리
+  $("meta").textContent = [meta.corpus && ("대상: " + meta.corpus), meta.commit && ("커밋 " + String(meta.commit).slice(0, 9)), meta.generated_at && ("검토 " + String(meta.generated_at).slice(0, 10))].filter(Boolean).join(" · ");
+  var sc = count(docs, "state"), judged = docs.length - (sc["기록"] || 0);
+  var openIssues = issues.filter(function (i) { return i.verified !== "불일치"; });
+  var withCanon = topics.filter(function (t) { return t.canonical; }).length;
+  [["문서", docs.length + "건", (sc["기록"] || 0) + "건은 시점 기록"],
+   ["현행으로 판정", judged ? Math.round((sc["현행"] || 0) / judged * 100) + "%" : "–", "기록을 뺀 " + judged + "건 중 " + (sc["현행"] || 0) + "건"],
+   ["손봐야 할 것", openIssues.length + "건", "심각도 높음 " + openIssues.filter(function (i) { return i.severity === "높음"; }).length + "건"],
+   ["주제", topics.length + "개", "정본이 정해진 주제 " + withCanon + "개"]].forEach(function (t) {
+    var tile = h("div", "tile"); tile.appendChild(h("div", "label", t[0])); tile.appendChild(h("div", "value", t[1])); tile.appendChild(h("div", "sub", t[2])); $("tiles").appendChild(tile);
+  });
+
+  // 상태
+  $("all-stack").replaceWith((function () { var s = stack(sc, STATES, SCOLOR); s.id = "all-stack"; s.style.height = "22px"; return s; })());
+  STATES.forEach(function (k) { var item = h("span"); var sw = h("span", "sw"); sw.style.background = "var(" + SCOLOR[k] + ")"; item.appendChild(sw); item.appendChild(document.createTextNode(k + " " + (sc[k] || 0) + "건")); $("state-legend").appendChild(item); });
+  var folders = count(docs, "folder");
+  rows($("folders"), Object.keys(folders).sort(function (a, b) { return folders[b] - folders[a]; }).map(function (f) {
+    return [f, folders[f], stack(count(docs.filter(function (d) { return d.folder === f; }), "state"), STATES, SCOLOR)];
+  }));
+  var dated = docs.filter(function (d) { return d.date; }), months = count(dated, function (d) { return String(d.date).slice(0, 7); });
+  var mkeys = Object.keys(months).sort(), mmax = Math.max.apply(null, mkeys.map(function (k) { return months[k]; }).concat([1]));
+  if (!mkeys.length) $("months").replaceWith(h("p", "empty", "날짜가 확인된 문서가 없습니다."));
+  mkeys.forEach(function (m) {
+    var box = h("div", "month"), col = h("div", "col"), c = count(dated.filter(function (d) { return String(d.date).slice(0, 7) === m; }), "state");
+    col.style.height = Math.max(4, Math.round(months[m] / mmax * 100)) + "px";
+    STATES.forEach(function (k) { if (!c[k]) return; var seg = h("span"); seg.style.flex = c[k] + " 0 0"; seg.style.background = "var(" + SCOLOR[k] + ")"; seg.title = m + " " + k + " " + c[k] + "건"; col.appendChild(seg); });
+    box.appendChild(h("b", null, months[m])); box.appendChild(col); box.appendChild(h("small", null, m.slice(2))); $("months").appendChild(box);
+  });
+
+  // 주제
+  if (!topics.length) $("topics").appendChild(h("p", "empty", "주제가 없습니다."));
+  topics.forEach(function (t) {
+    var b = h("button", "topic"); b.type = "button"; b.setAttribute("aria-pressed", "false");
+    var tdocs = (t.docs || []).map(function (id) { return byId[id]; }).filter(Boolean), ti = issues.filter(function (i) { return i.topic === t.id && i.verified !== "불일치"; });
+    b.appendChild(h("h3", null, t.name));
+    if (t.summary) b.appendChild(h("p", "muted", t.summary));
+    b.appendChild(h("div", "canon", t.canonical ? "정본: " + title(t.canonical) : "정본 없음"));
+    b.appendChild(stack(count(tdocs, "state"), STATES, SCOLOR));
+    var foot = h("div", "foot"); foot.appendChild(document.createTextNode("문서 " + tdocs.length + "건"));
+    SEVS.forEach(function (s) { var n = ti.filter(function (i) { return i.severity === s; }).length; if (n) foot.appendChild(pill(s + " " + n, SEVCOLOR[s])); });
+    if (!ti.length) foot.appendChild(document.createTextNode("· 문제 없음"));
+    b.appendChild(foot);
+    b.addEventListener("click", function () { sel.topic = sel.topic === t.id ? null : t.id; sel.limit = 60; Array.prototype.forEach.call($("topics").children, function (x) { x.setAttribute("aria-pressed", "false"); }); if (sel.topic) b.setAttribute("aria-pressed", "true"); renderIssues(); renderDocs(); });
+    $("topics").appendChild(b);
+  });
+
+  // 문제
+  function chips(el, label, values, key, after) {
+    el.appendChild(h("span", "muted", label));
+    values.forEach(function (v) { var c = h("button", "chip", v); c.type = "button"; c.setAttribute("aria-pressed", "false");
+      c.addEventListener("click", function () { sel[key] = sel[key] === v ? null : v; sel.limit = 60; Array.prototype.forEach.call(el.querySelectorAll('[data-k="' + key + '"]'), function (x) { x.setAttribute("aria-pressed", String(x.textContent === sel[key])); }); after(); });
+      c.dataset.k = key; el.appendChild(c); });
+  }
+  chips($("issue-filters"), "종류", Object.keys(count(issues, "kind")), "kind", renderIssues);
+  chips($("issue-filters"), "심각도", SEVS, "sev", renderIssues);
+  function renderIssues() {
+    var list = issues.filter(function (i) { return (!sel.topic || i.topic === sel.topic) && (!sel.kind || i.kind === sel.kind) && (!sel.sev || i.severity === sel.sev); })
+      .sort(function (a, b) { return SEVS.indexOf(a.severity) - SEVS.indexOf(b.severity); });
+    var box = $("issues"); box.textContent = "";
+    $("issue-count").textContent = list.length + "건" + (sel.topic ? " · " + topicById[sel.topic].name : "");
+    if (!list.length) { box.appendChild(h("p", "empty", "해당하는 문제가 없습니다.")); return; }
+    list.forEach(function (i) {
+      var row = h("div", "issue"), head = h("div", "head");
+      head.appendChild(pill(i.severity || "?", SEVCOLOR[i.severity])); head.appendChild(pill(i.kind || "?"));
+      if (topicById[i.topic]) head.appendChild(h("span", "muted", topicById[i.topic].name));
+      head.appendChild(h("span", "muted", "· 검증: " + (i.verified || "미검증")));
+      row.appendChild(head); row.appendChild(h("div", null, i.what));
+      row.appendChild(h("div", "docs", (i.docs || []).map(title).join("  ↔  ")));
+      if ((i.evidence || []).length) {
+        var det = h("details"); det.appendChild(h("summary", null, "근거 " + i.evidence.length + "곳 보기"));
+        i.evidence.forEach(function (e) { var q = h("blockquote"); q.appendChild(document.createTextNode(e.quote || "")); q.appendChild(h("small", null, title(e.doc) + (e.loc ? " · " + e.loc : ""))); det.appendChild(q); });
+        row.appendChild(det);
+      }
+      box.appendChild(row);
+    });
+  }
+
+  // 문서
+  chips($("state-filters"), "", STATES.filter(function (s) { return sc[s]; }), "state", renderDocs);
+  $("q").addEventListener("input", function () { sel.q = this.value.trim().toLowerCase(); sel.limit = 60; renderDocs(); });
+  function renderDocs() {
+    var list = docs.filter(function (d) {
+      if (sel.topic && (d.topics || []).indexOf(sel.topic) < 0) return false;
+      if (sel.state && d.state !== sel.state) return false;
+      if (sel.q && ((d.title || "") + " " + (d.path || "") + " " + (d.note || "")).toLowerCase().indexOf(sel.q) < 0) return false;
+      return true;
+    });
+    $("doc-count").textContent = list.length + "건";
+    var tb = $("docs"); tb.textContent = "";
+    list.slice(0, sel.limit).forEach(function (d) {
+      var tr = h("tr"), td = h("td", "path"); td.appendChild(h("div", null, d.title || d.path)); td.appendChild(h("div", "muted mono", d.path)); tr.appendChild(td);
+      tr.appendChild(h("td", null, d.kind || "")); tr.appendChild(h("td", "mono", d.date || ""));
+      var st = h("td"); st.appendChild(pill(d.state, SCOLOR[d.state])); tr.appendChild(st);
+      var note = h("td", "path"); note.appendChild(document.createTextNode(d.note || "")); if (d.superseded_by) note.appendChild(h("div", "muted", "대신하는 문서: " + title(d.superseded_by))); tr.appendChild(note);
+      tb.appendChild(tr);
+    });
+    var more = $("more"); more.textContent = "";
+    if (list.length > sel.limit) { var b = h("button", "chip", "더 보기 (" + (list.length - sel.limit) + "건 남음)"); b.type = "button"; b.addEventListener("click", function () { sel.limit += 100; renderDocs(); }); more.appendChild(b); }
+    if (!list.length) more.appendChild(h("p", "empty", "해당하는 문서가 없습니다."));
+  }
+
+  // 이력
+  var hist = D.history || [], hb = $("history");
+  if (hist.length < 2) hb.appendChild(h("p", "empty", "검토가 한 번뿐입니다. 같은 폴더를 다시 검토하면 현행 비율과 문제 수의 변화가 여기에 나옵니다."));
+  else {
+    var wrap = h("div", "table-scroll"), t = h("table"), hr = h("tr");
+    ["검토일", "커밋", "문서", "현행", "남은 문제"].forEach(function (x) { hr.appendChild(h("th", null, x)); }); t.appendChild(hr);
+    hist.forEach(function (x, idx) { var tr = h("tr"), prev = hist[idx - 1];
+      function delta(k, lowerIsBetter) { if (!prev) return String(x[k]); var d = x[k] - prev[k]; return x[k] + (d ? " (" + (d > 0 ? "+" : "") + d + (d < 0 === lowerIsBetter ? " 개선" : " 악화") + ")" : " (변화 없음)"); }
+      [x.date, String(x.commit || "").slice(0, 9), x.docs, delta("current", false), delta("issues_open", true)].forEach(function (v) { tr.appendChild(h("td", null, v)); }); t.appendChild(tr); });
+    wrap.appendChild(t); hb.appendChild(wrap);
+  }
+
+  // 신뢰
+  var cv = meta.convert || {}; rows($("convert"), ["성공", "부분 추출", "실패"].map(function (k) { return [k, cv[k] || 0]; }));
+  var know = D.knowledge || [], vc = count(issues, function (i) { return i.verified || "미검증"; }), kc = count(know, function (k) { return k.crosscheck || "미검증"; });
+  rows($("verify"), Object.keys(vc).map(function (k) { return ["문제 · " + k, vc[k]]; }).concat(Object.keys(kc).map(function (k) { return ["지식 · " + k, kc[k]]; })));
+
+  renderIssues(); renderDocs();
+})();
+</script>
+</body>
+</html>
