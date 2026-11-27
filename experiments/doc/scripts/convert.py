@@ -5,7 +5,8 @@
   PDF   [p3]            3쪽의 글 한 줄        [p3 t1 r2]  3쪽 첫째 표의 2행
   XLSX  [매출!A3:D3]     시트 "매출"의 3행
   HWPX  [s0 p12]        첫 구역의 12번째 문단  [s0 p12 t1 r2 c3] 그 문단에 달린 첫째 표의 2행 3열
-  TXT, MD               그대로 복사한다. 줄 번호가 위치다.
+  HTML  [L120]          원본 120번째 줄에서 시작하는 글. 표의 행은 칸을 | 로 잇는다
+  TXT, MD 등 텍스트      그대로 복사한다. 줄 번호가 위치다.
 
 사용: convert.py <원본 폴더> <출력 폴더>
 출력 폴더에 <원본 상대 경로>.txt 와 manifest.json 을 쓴다.
@@ -15,6 +16,7 @@ import hashlib
 import json
 import sys
 import zipfile
+from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -151,12 +153,67 @@ def convert_pdf(path):
     return out, notes
 
 
+# ---- HTML ----
+
+class _HtmlText(HTMLParser):
+    BLOCK = {"p", "div", "li", "tr", "br", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article",
+             "header", "footer", "table", "ul", "ol", "pre", "blockquote", "title", "dt", "dd", "caption"}
+    SKIP = {"script", "style", "template", "noscript"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out, self.buf, self.start = [], [], None
+        self.skip, self.skipped_chars = 0, 0
+
+    def flush(self):
+        text = one_line("".join(self.buf)).strip(" |")
+        if text:
+            self.out.append(f"[L{self.start}] {text}")
+        self.buf, self.start = [], None
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.SKIP:
+            self.skip += 1
+        elif tag in self.BLOCK:
+            self.flush()
+        elif tag in ("td", "th") and self.buf:
+            self.buf.append(" | ")
+
+    def handle_endtag(self, tag):
+        if tag in self.SKIP:
+            self.skip = max(0, self.skip - 1)
+        elif tag in self.BLOCK:
+            self.flush()
+
+    def handle_data(self, data):
+        if self.skip:
+            self.skipped_chars += len(data)
+        elif data.strip():
+            if self.start is None:
+                self.start = self.getpos()[0]
+            self.buf.append(data)
+        elif self.buf:
+            self.buf.append(" ")
+
+
+def convert_html(path):
+    parser = _HtmlText()
+    parser.feed(path.read_text(encoding="utf-8", errors="replace"))
+    parser.flush()
+    body = sum(len(l) for l in parser.out)
+    notes = []
+    if parser.skipped_chars > 20 * max(body, 1):
+        notes.append(f"본문 {body}자, 스크립트·스타일 {parser.skipped_chars}자: 내용이 스크립트로 그려지는 것으로 보임")
+    return parser.out, notes
+
+
 def convert_text(path):
     return path.read_text(encoding="utf-8").splitlines(), []
 
 
 CONVERTERS = {".hwpx": convert_hwpx, ".xlsx": convert_xlsx, ".pdf": convert_pdf,
-              ".txt": convert_text, ".md": convert_text}
+              ".html": convert_html, ".htm": convert_html,
+              **{ext: convert_text for ext in (".txt", ".md", ".json", ".sql", ".py", ".csv")}}
 
 
 def main():
