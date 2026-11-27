@@ -23,4 +23,4 @@
 
 ## 기술 후보
 
-Java / Spring Boot(모듈러 모놀리스, Hexagonal), React, 내장 검색 인덱스(SQLite FTS 또는 Lucene). 확정 전 후보이며 결정은 ADR로 기록한다.
+Java / Spring Boot(모듈러 모놀리스, Hexagonal), React, 내장 검색·관계 인덱스(SQLite FTS, Lucene, Relate 중 실험으로 결정). 확정 전 후보이며 결정은 ADR로 기록한다.
