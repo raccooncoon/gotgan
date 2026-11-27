@@ -3,7 +3,7 @@
 
 file 근거: 인용문이 대상 저장소의 기록된 커밋, 경로, 줄 범위 안에 실제로 있는지 본다.
 그 밖의 근거(observation, human): 검사할 수 없음으로 센다.
-본문의 각주 라벨이 sources의 id와 맞는지도 본다.
+본문의 각주 라벨이 sources의 id와 맞는지, 본문의 모든 문단에 근거 각주가 있는지도 본다.
 
 사용: verify_sources.py <lab/knowledge> <대상 저장소 경로>
 실패가 하나라도 있으면 종료 코드 1.
@@ -46,6 +46,18 @@ def check_file_source(repo, src):
     return None
 
 
+def uncited_blocks(body):
+    """근거 각주가 없는 문단 수. 제목, 각주 정의, 코드 블록, 표 구분선은 세지 않는다."""
+    body = re.sub(r"```.*?```", "", body, flags=re.S)
+    count = 0
+    for block in re.split(r"\n\s*\n", body):
+        lines = [l for l in block.strip().splitlines()
+                 if l.strip() and not re.match(r"\s*(#|\[\^[^\]]+\]:|\|?\s*:?-{3,})", l)]
+        if lines and not re.search(r"\[\^[^\]]+\](?!:)", "\n".join(lines)):
+            count += 1
+    return count
+
+
 def main():
     if len(sys.argv) != 3:
         sys.exit(__doc__)
@@ -53,6 +65,10 @@ def main():
     checked = failed = uncheckable = files = 0
     for path, meta, body in concepts(knowledge):
         files += 1
+        if meta is None:
+            failed += 1
+            print(f"실패  {path}: 머리말을 YAML로 읽을 수 없음")
+            continue
         sources = [s for s in as_list(meta.get("sources")) if isinstance(s, dict)]
         problems = []
         if not sources:
@@ -61,8 +77,9 @@ def main():
         cited = set(re.findall(r"\[\^([^\]]+)\](?!:)", body))
         for label in sorted(cited - ids):
             problems.append(f"각주 [^{label}]에 해당하는 근거가 없음")
-        if sources and not cited:
-            problems.append("본문에 근거 각주가 없음")
+        bare = uncited_blocks(body)
+        if bare:
+            problems.append(f"근거 각주가 없는 문단 {bare}개")
         for src in sources:
             name = src.get("id", "?")
             if src.get("x-gotgan-kind", "file") != "file":

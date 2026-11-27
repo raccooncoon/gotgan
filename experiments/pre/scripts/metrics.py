@@ -42,10 +42,13 @@ def trust_tier(meta):
     return "machine-confirmed" if actors else "unverified"
 
 
-def knowledge_stats(lab):
+def knowledge_stats(lab, unreadable):
     tiers, types, areas, statuses = Counter(), Counter(), Counter(), Counter()
     total = 0
-    for _, meta, _ in concepts(lab / "knowledge"):
+    for path, meta, _ in concepts(lab / "knowledge"):
+        if meta is None:
+            unreadable.append(str(path))
+            continue
         total += 1
         tiers[trust_tier(meta)] += 1
         types[str(meta["type"])] += 1
@@ -55,13 +58,16 @@ def knowledge_stats(lab):
             "by_area": dict(areas), "by_status": dict(statuses)}
 
 
-def flag_stats(lab):
+def flag_stats(lab, unreadable):
     """신고를 머리말의 round 값별로 센다."""
     rounds = {}
     kinds = Counter()
     open_now = 0
     for path in sorted((lab / "flags").glob("*.md")):
         meta, _ = read(path)
+        if meta is None:
+            unreadable.append(str(path))
+            continue
         if not meta:
             continue
         rnd = str(meta.get("round") or "미상")
@@ -100,14 +106,18 @@ def main():
         sys.exit(__doc__)
     lab = Path(sys.argv[1])
     scores = score_stats(lab)
+    unreadable = []
     review = lab / "report" / "review_minutes.txt"
     result = {
         "target_commit": (lab / "TARGET").read_text(encoding="utf-8").strip() if (lab / "TARGET").exists() else None,
-        "knowledge": knowledge_stats(lab),
-        "flags": flag_stats(lab),
+        "knowledge": knowledge_stats(lab, unreadable),
+        "flags": flag_stats(lab, unreadable),
         "scores": scores,
         "review_minutes": float(review.read_text().strip()) if review.exists() else None,
+        "unreadable_files": unreadable,
     }
+    for path in unreadable:
+        print(f"경고: 머리말을 읽을 수 없어 집계에서 뺐습니다: {path}", file=sys.stderr)
     out = lab / "report" / "metrics.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
