@@ -43,8 +43,7 @@ Proposal-Id: prop-2026-0042
 Proposal-Hash: sha256:...
 Base-Revision: sha256:...
 Reviewed-By: reviewer-agent-1
-Approved-By: user:hong
-Trust-Level: peer-reviewed
+Approved-By: human:hong
 ```
 
 작업 트리는 진실이 아니다. 시작 시 커밋되지 않은 변경이 있으면 반영 도중 중단된 것으로 보고 `HEAD`로 되돌린다. 단, 사용자가 직접 편집한 파일은 5항의 규칙을 따른다.
@@ -59,7 +58,7 @@ Trust-Level: peer-reviewed
 
 ### 4. 원본 바이너리는 Git 밖에 둔다
 
-원본 파일은 내용 해시로 주소를 매겨 `sources/blobs/` 아래에 저장하고 Git에서 제외한다. Git은 원본의 메타데이터(해시, 버전, 접근 등급, 추출 품질)만 추적한다. Vault 이동 시에는 Git 저장소와 blob 디렉터리를 함께 옮긴다. `verify`가 메타데이터의 해시와 실제 blob의 일치를 검사한다.
+첫 검증 대상인 소스코드처럼 원본이 이미 Git 저장소에 있으면 복사하지 않고 저장소 식별자와 커밋으로 가리킨다. 그 외의 원본 파일은 내용 해시로 주소를 매겨 `sources/blobs/` 아래에 저장하고 Git에서 제외한다. Git은 원본의 메타데이터(해시, 버전, 접근 등급, 추출 품질)만 추적한다. Vault 이동 시에는 Git 저장소와 blob 디렉터리를 함께 옮긴다. `verify`가 메타데이터의 해시와 실제 blob의 일치를 검사한다.
 
 ### 5. 직접 편집은 감지해서 변경안으로 돌린다
 
