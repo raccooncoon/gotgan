@@ -173,6 +173,7 @@ td.path { overflow-wrap: anywhere; }
   var SEVS = ["높음", "중간", "낮음"], SEVCOLOR = { "높음": "--sev-high", "중간": "--sev-mid", "낮음": "--sev-low" };
   var byId = {}; docs.forEach(function (d) { byId[d.id] = d; });
   var topicById = {}; topics.forEach(function (t) { topicById[t.id] = t; });
+  function isOpen(i) { return i.verified !== "불일치" && i.status !== "해결됨"; }
   var sel = { topic: null, kind: null, sev: null, state: null, q: "", limit: 60 };
 
   function $(id) { return document.getElementById(id); }
@@ -251,11 +252,11 @@ td.path { overflow-wrap: anywhere; }
   // 머리
   $("meta").textContent = [meta.corpus && ("대상: " + meta.corpus), meta.commit && ("커밋 " + String(meta.commit).slice(0, 9)), meta.generated_at && ("검토 " + String(meta.generated_at).slice(0, 10))].filter(Boolean).join(" · ");
   var sc = count(docs, "state"), judged = docs.length - (sc["기록"] || 0);
-  var openIssues = issues.filter(function (i) { return i.verified !== "불일치"; });
+  var openIssues = issues.filter(isOpen), resolved = issues.filter(function (i) { return i.status === "해결됨"; }).length;
   var withCanon = topics.filter(function (t) { return t.canonical; }).length;
   [["문서", docs.length + "건", (sc["기록"] || 0) + "건은 시점 기록"],
    ["현행으로 판정", judged ? Math.round((sc["현행"] || 0) / judged * 100) + "%" : "–", "기록을 뺀 " + judged + "건 중 " + (sc["현행"] || 0) + "건"],
-   ["손봐야 할 것", openIssues.length + "건", "심각도 높음 " + openIssues.filter(function (i) { return i.severity === "높음"; }).length + "건"],
+   ["손봐야 할 것", openIssues.length + "건", "심각도 높음 " + openIssues.filter(function (i) { return i.severity === "높음"; }).length + "건" + (resolved ? " · 해결됨 " + resolved + "건" : "")],
    ["주제", topics.length + "개", "정본이 정해진 주제 " + withCanon + "개"]].forEach(function (t) {
     var tile = h("div", "tile"); tile.appendChild(h("div", "label", t[0])); tile.appendChild(h("div", "value", t[1])); tile.appendChild(h("div", "sub", t[2])); $("tiles").appendChild(tile);
   });
@@ -281,7 +282,7 @@ td.path { overflow-wrap: anywhere; }
   if (!topics.length) $("topics").appendChild(h("p", "empty", "주제가 없습니다."));
   topics.forEach(function (t) {
     var b = h("button", "topic"); b.type = "button"; b.setAttribute("aria-pressed", "false");
-    var tdocs = (t.docs || []).map(function (id) { return byId[id]; }).filter(Boolean), ti = issues.filter(function (i) { return i.topic === t.id && i.verified !== "불일치"; });
+    var tdocs = (t.docs || []).map(function (id) { return byId[id]; }).filter(Boolean), ti = issues.filter(function (i) { return i.topic === t.id && isOpen(i); });
     b.appendChild(h("h3", null, t.name));
     if (t.summary) b.appendChild(h("p", "muted", t.summary));
     b.appendChild(h("div", "canon", t.canonical ? "정본: " + title(t.canonical) : "정본 없음"));
@@ -305,16 +306,18 @@ td.path { overflow-wrap: anywhere; }
   chips($("issue-filters"), "심각도", SEVS, "sev", renderIssues);
   function renderIssues() {
     var list = issues.filter(function (i) { return (!sel.topic || i.topic === sel.topic) && (!sel.kind || i.kind === sel.kind) && (!sel.sev || i.severity === sel.sev); })
-      .sort(function (a, b) { return SEVS.indexOf(a.severity) - SEVS.indexOf(b.severity); });
+      .sort(function (a, b) { return (isOpen(b) - isOpen(a)) || (SEVS.indexOf(a.severity) - SEVS.indexOf(b.severity)); });
     var box = $("issues"); box.textContent = "";
-    $("issue-count").textContent = list.length + "건" + (sel.topic ? " · " + topicById[sel.topic].name : "");
+    $("issue-count").textContent = "남은 것 " + list.filter(isOpen).length + "건 · 전체 " + list.length + "건" + (sel.topic ? " · " + topicById[sel.topic].name : "");
     if (!list.length) { box.appendChild(h("p", "empty", "해당하는 문제가 없습니다.")); return; }
     list.forEach(function (i) {
       var row = h("div", "issue"), head = h("div", "head");
+      if (i.status === "해결됨") { head.appendChild(pill("해결됨", "--st-current")); row.style.opacity = "0.7"; }
       head.appendChild(pill(i.severity || "?", SEVCOLOR[i.severity])); head.appendChild(pill(i.kind || "?"));
       if (topicById[i.topic]) head.appendChild(h("span", "muted", topicById[i.topic].name));
       head.appendChild(h("span", "muted", "· 검증: " + (i.verified || "미검증")));
       row.appendChild(head); row.appendChild(h("div", null, i.what));
+      if (i.resolution) row.appendChild(h("div", "muted", "처리: " + i.resolution));
       var dl = h("div", "docs"); joinLinks(dl, i.docs || [], "  ↔  "); row.appendChild(dl);
       if ((i.evidence || []).length) {
         var det = h("details"); det.appendChild(h("summary", null, "근거 " + i.evidence.length + "곳 보기"));
