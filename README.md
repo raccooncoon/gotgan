@@ -16,6 +16,7 @@
 ## 문서
 
 - [개발 계획](docs/plan.md)
+- [참고 자료 분석](docs/references.md)
 - [아키텍처 결정 기록(ADR)](docs/adr/)
 
 ## 기술 후보
