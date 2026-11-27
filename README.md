@@ -15,6 +15,7 @@
 
 ## 문서
 
+- [제품 정의](docs/01-product-definition.md)
 - [개발 계획](docs/plan.md)
 - [아키텍처 결정 기록(ADR)](docs/adr/)
 

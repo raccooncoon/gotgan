@@ -48,8 +48,9 @@
 - 불변 원본 저장, 해시 기반 중복 제거
 - Document IR과 형식별 Adapter (PDF·텍스트 먼저, 이후 HWPX·XLSX)
 - 내장 검색 인덱스
+- 원본 버전 수집
 - CLI: `init`, `ingest`, `search`, `inspect`, `verify`
-- 평가 하네스
+- 평가 하네스와 기준 에이전트. gotgan은 답을 생성하지 않고, CLI를 쓰는 에이전트가 답한다
 
 종료 조건: A와 B의 측정값 확보.
 
